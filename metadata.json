@@ -1,0 +1,6 @@
+{
+  "name": "Aegis Men's Health",
+  "description": "A culturally sensitive, zero-knowledge digital front door for proactive male reproductive health screening, explainable risk analysis, and guided specialist triage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
