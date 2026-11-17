@@ -734,23 +734,84 @@ export const DoctorDashboard: React.FC<DoctorDashboardProps> = ({
                     </p>
                   </div>
 
-                  {/* Detailed Clinical Assessment Breakdown */}
+                  {/* Detailed Clinical Assessment Breakdown & Received Report Handoff */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                         <Activity className="w-4 h-4 text-[#1B5683]" />
                         <span>
                           {isAr
-                            ? "التفصيل السريري لما يعاني منه المراجع"
-                            : "Clinical Breakdown of Patient's Condition"}
+                            ? "التقرير السريري المرسل من المراجع"
+                            : "Received Clinical Risk Report & Condition Breakdown"}
                         </span>
                       </h3>
                       <span className="text-xs font-mono-tabular text-slate-500">
-                        {isAr ? "مؤشر المخاطر:" : "Risk Score:"}{" "}
+                        {isAr ? "مؤشر المخاطر:" : "Composite Risk:"}{" "}
                         <strong className="text-slate-900">
                           {activeCase.report.compositeScore}/100
                         </strong>
                       </span>
+                    </div>
+
+                    {/* 4-Pillar Mini Progress Bars passed from Patient */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-[#F8FAFC] border border-slate-200/90 rounded-xl p-3.5 text-xs">
+                      {[
+                        {
+                          label: isAr ? "نمط الحياة" : "Lifestyle",
+                          val: activeCase.consent.shareLifestyle
+                            ? activeCase.report.pillarScores.lifestyle
+                            : null,
+                        },
+                        {
+                          label: isAr ? "الأيض" : "Metabolic",
+                          val: activeCase.consent.shareMetabolic
+                            ? activeCase.report.pillarScores.metabolic
+                            : null,
+                        },
+                        {
+                          label: isAr ? "التشريحي" : "Anatomical",
+                          val: activeCase.consent.shareAnatomical
+                            ? activeCase.report.pillarScores.anatomical
+                            : null,
+                        },
+                        {
+                          label: isAr ? "الالتهابي" : "Infectious",
+                          val: activeCase.consent.shareInfectious
+                            ? activeCase.report.pillarScores.infectious
+                            : null,
+                        },
+                      ].map((p, idx) => (
+                        <div key={idx} className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-600 font-medium">
+                              {p.label}
+                            </span>
+                            <span className="font-mono-tabular font-semibold text-slate-900">
+                              {p.val === null
+                                ? isAr
+                                  ? "محجوب"
+                                  : "Masked"
+                                : `${p.val}/100`}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${
+                                p.val === null
+                                  ? "bg-slate-300"
+                                  : p.val >= 55
+                                  ? "bg-[#DC2626]"
+                                  : p.val >= 30
+                                  ? "bg-[#D97706]"
+                                  : "bg-[#059669]"
+                              }`}
+                              style={{
+                                width: `${p.val === null ? 100 : Math.max(6, p.val)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

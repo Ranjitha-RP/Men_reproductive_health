@@ -27,11 +27,14 @@ import {
   ClinicalTabId,
   ConsentMatrix,
   DoctorCooperationResponse,
+  FollowUpReminder,
   IntakeData,
   Language,
   PatientDemographicsSnapshot,
   PatientQueryCase,
   PortalMode,
+  ProgressCheckpoint,
+  SimulatedCaseStudy,
 } from "./types/clinical";
 import { EMPTY_CLEAN_INTAKE } from "./data/personasAndContent";
 import { evaluateClinicalRisk } from "./utils/riskEngine";
@@ -55,6 +58,7 @@ import { calculateAgeFromBirthYear } from "./services/patientAuthService";
 import { initAuth, logoutGoogleGmail } from "./lib/googleGmailAuth";
 import { QuickExitDecoy } from "./components/QuickExitDecoy";
 import { SupabaseSchemaModal } from "./components/SupabaseSchemaModal";
+import { ReferralJourneyStepper } from "./components/ReferralJourneyStepper";
 import {
   EditorialHeroAndProcess,
   EditorialPlansAndConsult,
@@ -136,6 +140,77 @@ export default function App() {
       clinicianNoteAr: "",
       scheduledSlot: "",
     });
+
+  const [prefilledReferralNote, setPrefilledReferralNote] =
+    useState<string>("");
+  const [hasCompletedIntake, setHasCompletedIntake] = useState<boolean>(false);
+  const [loadedScenarioBanner, setLoadedScenarioBanner] = useState<string | null>(
+    null
+  );
+  const [progressCheckpoints, setProgressCheckpoints] = useState<
+    ProgressCheckpoint[]
+  >([
+    {
+      id: "cp-baseline",
+      dayLabelEn: "Day 1 (Baseline)",
+      dayLabelAr: "اليوم 1 (الأساس)",
+      compositeScore: 10,
+      noteEn: "Initial screening baseline recorded",
+      noteAr: "تم تسجيل خط الأساس الأولي",
+      habitsActive: [],
+    },
+  ]);
+
+  const [reminders, setReminders] = useState<FollowUpReminder[]>([
+    {
+      id: "rem-1",
+      dayLabelEn: "Day 1",
+      dayLabelAr: "اليوم 1",
+      titleEn: "Complete 5-pillar check & review AI Companion explanation",
+      titleAr: "إكمال الفحص الصحي ومراجعة شرح المرافق الذكي",
+      detailEn:
+        "Review your risk breakdown in simple words and verify privacy toggles.",
+      detailAr: "مراجعة نتيجة المخاطر بلغة بسيطة والتحقق من إعدادات الخصوصية.",
+      category: "lifestyle",
+      completed: false,
+    },
+    {
+      id: "rem-2",
+      dayLabelEn: "Day 3",
+      dayLabelAr: "اليوم 3",
+      titleEn: "Attend specialist consultation & review report handoff",
+      titleAr: "حضور استشارة الطبيب ومراجعة التقرير المرسل",
+      detailEn:
+        "Discuss your consented clinical summary and approved diagnostic tests.",
+      detailAr: "مناقشة الملخص المرسل والفحوصات المعتمدة مع الطبيب المختص.",
+      category: "specialist",
+      completed: false,
+    },
+    {
+      id: "rem-3",
+      dayLabelEn: "Day 30",
+      dayLabelAr: "اليوم 30",
+      titleEn: "Log thermal cooling, sleep & optional lab check-in",
+      titleAr: "متابعة عادات التبريد والنوم أو نتائج التحاليل بعد شهر",
+      detailEn:
+        "Track lifestyle habit impact and upload any new hormone or semen labs.",
+      detailAr: "تحديث التقدم ورفع أي تحاليل مخبرية جديدة.",
+      category: "lab",
+      completed: false,
+    },
+    {
+      id: "rem-4",
+      dayLabelEn: "Day 90",
+      dayLabelAr: "اليوم 90",
+      titleEn: "Complete 1-cycle (90-day) full re-screening",
+      titleAr: "إعادة الفحص الشامل بعد دورة 90 يوماً",
+      detailEn:
+        "Compare your updated risk score against Day 1 after one full spermatogenesis cycle.",
+      detailAr: "مقارنة درجة المخاطر الحالية مع اليوم الأول بعد دورة النضج.",
+      category: "rescreen",
+      completed: false,
+    },
+  ]);
 
   const suiteSectionRef = useRef<HTMLElement | null>(null);
   const lastEscPress = useRef<number>(0);
@@ -255,7 +330,45 @@ export default function App() {
   );
 
   const handleUpdateIntake = (patch: Partial<IntakeData>) => {
+    setHasCompletedIntake(true);
     setIntake((prev) => ({ ...prev, ...patch }));
+  };
+
+  // Keep Day 1 Baseline checkpoint synced with current riskReport when only baseline exists
+  useEffect(() => {
+    setProgressCheckpoints((prev) => {
+      if (prev.length === 0) return prev;
+      const first = prev[0];
+      if (first.compositeScore === riskReport.compositeScore) return prev;
+      return [
+        { ...first, compositeScore: riskReport.compositeScore },
+        ...prev.slice(1),
+      ];
+    });
+  }, [riskReport.compositeScore]);
+
+  const handleLoadSimulatedCase = (study: SimulatedCaseStudy) => {
+    setIntake({ ...study.intakePreset });
+    setHasCompletedIntake(true);
+    setLoadedScenarioBanner(isAr ? study.personaAr : study.personaEn);
+    setProgressCheckpoints(
+      study.timelinePoints.map((pt, idx) => ({
+        id: `sim-cp-${study.id}-${idx}`,
+        dayLabelEn: pt.label,
+        dayLabelAr: pt.label,
+        compositeScore: pt.score,
+        noteEn: idx === 0 ? "Baseline intake score" : "Follow-up progress check-in",
+        noteAr: idx === 0 ? "نقطة الأساس" : "متابعة التحسن",
+        habitsActive: [],
+      }))
+    );
+    setActiveTab("report");
+    setTimeout(() => {
+      suiteSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 60);
   };
 
   const handleUpdateConsent = (patch: Partial<ConsentMatrix>) => {
@@ -614,27 +727,27 @@ export default function App() {
   }[] = [
     {
       id: "intake",
-      label: isAr ? "1. الفحص السري (البوابة)" : "1. Discreet Intake",
+      label: isAr ? "1. الفحص الصحي" : "1. Health Check",
       icon: ClipboardList,
     },
     {
       id: "report",
-      label: isAr ? "2. التقرير التفسيري الذكي" : "2. Explainable Risk Report",
+      label: isAr ? "2. المخاطر والمساعد الذكي" : "2. Risk & AI Companion",
       icon: FileSpreadsheet,
     },
     {
       id: "triage",
-      label: isAr ? "3. اختيار الأعراض وطلب طبيب" : "3. Symptoms & Meet Doctor",
+      label: isAr ? "3. الإحالة والمتابعة" : "3. Referral & Progress",
       icon: GitBranch,
     },
     {
       id: "privacy",
-      label: isAr ? "4. مركز الخصوصية والموافقة" : "4. Privacy & Consent",
+      label: isAr ? "4. الخصوصية والموافقة" : "4. Privacy & Consent",
       icon: Shield,
     },
     {
       id: "impact",
-      label: isAr ? "5. لوحة تقييم الأثر" : "5. Impact & Analytics",
+      label: isAr ? "5. الأثر وحالات المحاكاة" : "5. Impact & Case Studies",
       icon: BarChart3,
     },
   ];
@@ -1085,6 +1198,39 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Scenario Preview Notice when Evaluator loads a Simulated Case */}
+                {loadedScenarioBanner && (
+                  <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-800">
+                    <span>
+                      {isAr
+                        ? `يتم الآن معاينة حالة محاكاة: ${loadedScenarioBanner}. يمكنك تجربة المساعد الذكي أو إرسال تقرير الإحالة.`
+                        : `Previewing Simulated Scenario: ${loadedScenarioBanner}. Ask the AI Companion or inspect the referral report handoff.`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIntake({ ...EMPTY_CLEAN_INTAKE });
+                        setHasCompletedIntake(false);
+                        setLoadedScenarioBanner(null);
+                      }}
+                      className="text-[#1B5683] font-semibold hover:underline cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                    >
+                      {isAr ? "إعادة التعيين لحالتي" : "Reset to My Clean Intake"}
+                    </button>
+                  </div>
+                )}
+
+                {/* End-to-End 5-Stage Care & Referral Journey Bar */}
+                <ReferralJourneyStepper
+                  lang={lang}
+                  activeTab={activeTab}
+                  hasCompletedIntake={hasCompletedIntake}
+                  hasSubmittedReferral={currentPatientAppointments.length > 0}
+                  doctorStatus={liveDoctorResponse.status}
+                  progressCheckInsCount={progressCheckpoints.length}
+                  onSelectTab={(tab) => setActiveTab(tab)}
+                />
+
                 {/* Segmented 5-Tab Bar */}
                 <div
                   role="tablist"
@@ -1136,7 +1282,18 @@ export default function App() {
                       <Tab2RiskReport
                         lang={lang}
                         report={riskReport}
-                        onProceedToTriage={() => setActiveTab("triage")}
+                        consent={consent}
+                        patientGoal={
+                          isAr
+                            ? authenticatedPatient.maritalGoalAr
+                            : authenticatedPatient.maritalGoalEn
+                        }
+                        onProceedToTriage={(prefillNote) => {
+                          if (prefillNote) {
+                            setPrefilledReferralNote(prefillNote);
+                          }
+                          setActiveTab("triage");
+                        }}
                       />
                     )}
 
@@ -1146,9 +1303,27 @@ export default function App() {
                         authenticatedPatient={authenticatedPatient}
                         intake={intake}
                         report={riskReport}
+                        consent={consent}
                         registeredDoctors={registeredDoctors}
                         bookedAppointments={currentPatientAppointments}
                         isBookingSaving={isBookingSaving}
+                        prefilledReferralNote={prefilledReferralNote}
+                        progressCheckpoints={progressCheckpoints}
+                        reminders={reminders}
+                        onAddCheckpoint={(cp) =>
+                          setProgressCheckpoints((prev) => [...prev, cp])
+                        }
+                        onToggleReminder={(id) =>
+                          setReminders((prev) =>
+                            prev.map((r) =>
+                              r.id === id ? { ...r, completed: !r.completed } : r
+                            )
+                          )
+                        }
+                        onAddReminder={(rem) =>
+                          setReminders((prev) => [...prev, rem])
+                        }
+                        onOpenPrivacyControls={() => setActiveTab("privacy")}
                         onUpdateIntake={handleUpdateIntake}
                         liveDoctorResponse={liveDoctorResponse}
                         onDispatchPatientQuery={handleDispatchPatientQuery}
@@ -1175,7 +1350,12 @@ export default function App() {
                       />
                     )}
 
-                    {activeTab === "impact" && <Tab5JudgeImpact lang={lang} />}
+                    {activeTab === "impact" && (
+                      <Tab5JudgeImpact
+                        lang={lang}
+                        onLoadSimulatedCase={handleLoadSimulatedCase}
+                      />
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>

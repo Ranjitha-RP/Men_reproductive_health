@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -18,6 +18,7 @@ import {
   UserCheck,
   MapPin,
   Phone,
+  Lock,
 } from "lucide-react";
 import {
   CONSULTATION_TIME_SLOTS,
@@ -28,21 +29,33 @@ import { calculateAgeFromBirthYear } from "../../services/patientAuthService";
 import {
   AuthenticatedPatient,
   BookedAppointmentSummary,
+  ConsentMatrix,
   DoctorCooperationResponse,
+  FollowUpReminder,
   IntakeData,
   Language,
+  ProgressCheckpoint,
   RiskReport,
 } from "../../types/clinical";
 import { extractSelectedSymptomsFromIntake } from "../../utils/doctorCaseHelpers";
+import { ProgressAndReminders } from "../ProgressAndReminders";
 
 interface Tab3SmartTriageProps {
   lang: Language;
   authenticatedPatient: AuthenticatedPatient;
   intake: IntakeData;
   report: RiskReport;
+  consent: ConsentMatrix;
   registeredDoctors: RegisteredDoctorOption[];
   bookedAppointments: BookedAppointmentSummary[];
   isBookingSaving?: boolean;
+  prefilledReferralNote?: string;
+  progressCheckpoints: ProgressCheckpoint[];
+  reminders: FollowUpReminder[];
+  onAddCheckpoint: (cp: ProgressCheckpoint) => void;
+  onToggleReminder: (id: string) => void;
+  onAddReminder: (rem: FollowUpReminder) => void;
+  onOpenPrivacyControls: () => void;
   onUpdateIntake: (patch: Partial<IntakeData>) => void;
   liveDoctorResponse: DoctorCooperationResponse;
   onDispatchPatientQuery: (payload: {
@@ -62,9 +75,17 @@ export const Tab3SmartTriage: React.FC<Tab3SmartTriageProps> = ({
   authenticatedPatient,
   intake,
   report,
+  consent,
   registeredDoctors,
   bookedAppointments,
   isBookingSaving = false,
+  prefilledReferralNote,
+  progressCheckpoints,
+  reminders,
+  onAddCheckpoint,
+  onToggleReminder,
+  onAddReminder,
+  onOpenPrivacyControls,
   onUpdateIntake,
   liveDoctorResponse,
   onDispatchPatientQuery,
@@ -108,11 +129,19 @@ export const Tab3SmartTriage: React.FC<Tab3SmartTriageProps> = ({
   const [meetingModality, setMeetingModality] = useState<
     "video" | "in_person" | "chat"
   >("video");
-  const [referralNotes, setReferralNotes] = useState<string>("");
+  const [referralNotes, setReferralNotes] = useState<string>(
+    prefilledReferralNote || ""
+  );
   const [symptomValidationMsg, setSymptomValidationMsg] = useState<
     string | null
   >(null);
   const [bookingConfirmed, setBookingConfirmed] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (prefilledReferralNote && prefilledReferralNote.trim()) {
+      setReferralNotes(prefilledReferralNote);
+    }
+  }, [prefilledReferralNote]);
 
   const currentSymptoms = useMemo(
     () => extractSelectedSymptomsFromIntake(intake),
@@ -881,6 +910,66 @@ export const Tab3SmartTriage: React.FC<Tab3SmartTriageProps> = ({
           />
         </div>
 
+        {/* Consent-Filtered Specialist Report Handoff Preview */}
+        <div className="bg-[#F3F6FA] border border-[#1B5683]/25 rounded-xl p-4 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-semibold text-slate-900 inline-flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-[#1B5683]" />
+              {isAr
+                ? "حزمة التقرير السريري التي ستُرسل إلى الطبيب:"
+                : "Report Package Passing to Specialist (Consent-Filtered):"}
+            </span>
+            <button
+              type="button"
+              onClick={onOpenPrivacyControls}
+              className="text-[#1B5683] font-semibold hover:underline cursor-pointer"
+            >
+              {isAr ? "تعديل الخصوصية والموافقة" : "Adjust Privacy & Consent"}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+            <div className="bg-white border border-slate-200/80 rounded-lg px-3 py-2">
+              <span className="text-[11px] text-slate-500 block">
+                {isAr ? "مستوى الهوية:" : "Identity Visibility:"}
+              </span>
+              <span className="font-semibold text-slate-900">
+                {consent.maskPersonalIdentity
+                  ? isAr
+                    ? "رمز جلسة مشفر (حماية الهوية)"
+                    : "Pseudonymous Token (Identity Masked)"
+                  : isAr
+                  ? "الاسم والبيانات الكاملة"
+                  : "Full Profile Shared"}
+              </span>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-lg px-3 py-2">
+              <span className="text-[11px] text-slate-500 block">
+                {isAr ? "تقرير المخاطر المرفق:" : "Attached Risk Score:"}
+              </span>
+              <span className="font-semibold font-mono-tabular text-slate-900">
+                {report.compositeScore}/100 ({report.overallLevel.toUpperCase()})
+              </span>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-lg px-3 py-2">
+              <span className="text-[11px] text-slate-500 block">
+                {isAr ? "المجالات المسموح بمشاركتها:" : "Consented Domains:"}
+              </span>
+              <span className="font-semibold text-[#059669]">
+                {[
+                  consent.shareLifestyle && (isAr ? "نمط الحياة" : "Lifestyle"),
+                  consent.shareMetabolic && (isAr ? "الأيض" : "Metabolic"),
+                  consent.shareAnatomical && (isAr ? "التشريحي" : "Anatomical"),
+                  consent.shareInfectious && (isAr ? "الالتهابات" : "Infectious"),
+                  consent.shareBiomarkers && (isAr ? "المختبر" : "Labs"),
+                ]
+                  .filter(Boolean)
+                  .join(" · ") ||
+                  (isAr ? "الملخص العام فقط" : "Summary Tier Only")}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {symptomValidationMsg && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs font-medium text-amber-900 flex items-center gap-2">
             <Activity className="w-4 h-4 text-[#D97706] shrink-0" />
@@ -1232,6 +1321,19 @@ export const Tab3SmartTriage: React.FC<Tab3SmartTriageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* PROGRESS OVER TIME + FOLLOW-UP CARE REMINDERS */}
+      <ProgressAndReminders
+        lang={lang}
+        intake={intake}
+        baselineReport={report}
+        doctorResponse={liveDoctorResponse}
+        checkpoints={progressCheckpoints}
+        reminders={reminders}
+        onAddCheckpoint={onAddCheckpoint}
+        onToggleReminder={onToggleReminder}
+        onAddReminder={onAddReminder}
+      />
     </div>
   );
 };

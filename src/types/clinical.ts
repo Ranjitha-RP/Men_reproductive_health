@@ -177,3 +177,63 @@ export interface BookedAppointmentSummary {
   persistedInSupabase: boolean;
   doctorResponse: DoctorCooperationResponse;
 }
+
+export interface AiExplanationResult {
+  plainLanguageSummary: string;
+  keyDrivers: string[];
+  safeNextSteps: string[];
+  questionsToAskDoctor: string[];
+  safetyNote: string;
+}
+
+export interface AiChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  timestamp: string;
+}
+
+export interface FollowUpReminder {
+  id: string;
+  dayLabelEn: string;
+  dayLabelAr: string;
+  titleEn: string;
+  titleAr: string;
+  detailEn: string;
+  detailAr: string;
+  category: "specialist" | "lifestyle" | "lab" | "rescreen";
+  completed: boolean;
+}
+
+export interface ProgressCheckpoint {
+  id: string;
+  dayLabelEn: string;
+  dayLabelAr: string;
+  compositeScore: number;
+  noteEn: string;
+  noteAr: string;
+  habitsActive: string[];
+}
+
+export interface SimulatedCaseStudy {
+  id: string;
+  personaEn: string;
+  personaAr: string;
+  categoryEn: string;
+  categoryAr: string;
+  concernSummaryEn: string;
+  concernSummaryAr: string;
+  baselineScore: number;
+  followUpScore: number;
+  referralStatusEn: string;
+  referralStatusAr: string;
+  timeToReferralEn: string;
+  timeToReferralAr: string;
+  clinicalOutcomeEn: string;
+  clinicalOutcomeAr: string;
+  interventionsEn: string[];
+  interventionsAr: string[];
+  timelinePoints: { label: string; score: number }[];
+  intakePreset: IntakeData;
+}
+

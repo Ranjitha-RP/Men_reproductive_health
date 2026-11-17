@@ -10,13 +10,21 @@ import {
   Scale,
   TrendingDown,
 } from "lucide-react";
-import { Language } from "../../types/clinical";
+import { Language, SimulatedCaseStudy } from "../../types/clinical";
+import {
+  PROGRAM_MEASURABLE_METRICS,
+  SIMULATED_CASE_STUDIES,
+} from "../../data/simulatedCases";
 
 interface Tab5JudgeImpactProps {
   lang: Language;
+  onLoadSimulatedCase?: (study: SimulatedCaseStudy) => void;
 }
 
-export const Tab5JudgeImpact: React.FC<Tab5JudgeImpactProps> = ({ lang }) => {
+export const Tab5JudgeImpact: React.FC<Tab5JudgeImpactProps> = ({
+  lang,
+  onLoadSimulatedCase,
+}) => {
   const isAr = lang === "ar";
 
   const kpis = [
@@ -190,6 +198,147 @@ export const Tab5JudgeImpact: React.FC<Tab5JudgeImpactProps> = ({ lang }) => {
             </div>
           );
         })}
+      </div>
+
+      {/* Realistic Simulated Patient Cases & Measurable Results */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-5">
+          <div>
+            <span className="text-xs font-semibold text-[#1B5683]">
+              {isAr
+                ? "حالات محاكاة واقعية ونتائج قابلة للقياس"
+                : "SIMULATED CASE OUTCOMES & REFERRAL METRICS"}
+            </span>
+            <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mt-0.5">
+              {isAr
+                ? "كيف تتحسن المخاطر وتكتمل الإحالات الطبية عبر المنصة"
+                : "Measurable Referral Completion & 90-Day Risk Improvement"}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isAr
+                ? "اضغط على «تجربة هذه الحالة» لتحميل بيانات أي سيناريو في لوحة المراجع واختبار المساعد الذكي والإحالة مباشرة."
+                : "Click “Preview Case in Workspace” on any scenario below to test its intake, AI Companion explanation, and referral report live."}
+            </p>
+          </div>
+        </div>
+
+        {/* 4 Measurable Program Metrics */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {PROGRAM_MEASURABLE_METRICS.map((m) => (
+            <div
+              key={m.id}
+              className="bg-[#F8FAFC] border border-slate-200/90 rounded-xl p-4 space-y-1"
+            >
+              <div className="text-2xl sm:text-3xl font-editorial font-semibold text-[#1B5683] tabular-nums">
+                {m.value}
+              </div>
+              <p className="text-xs font-semibold text-slate-900">
+                {isAr ? m.labelAr : m.labelEn}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {isAr ? m.detailAr : m.detailEn}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* 4 Realistic Simulated Patient Cases */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {SIMULATED_CASE_STUDIES.map((study) => {
+            const dropPct = Math.round(
+              ((study.baselineScore - study.followUpScore) /
+                Math.max(1, study.baselineScore)) *
+                100
+            );
+            return (
+              <div
+                key={study.id}
+                className="bg-[#F8FAFC] border border-slate-200 rounded-2xl p-5 space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-semibold text-slate-900 text-sm">
+                      {isAr ? study.personaAr : study.personaEn}
+                    </span>
+                    <span className="text-[#1B5683] font-medium">
+                      {isAr ? study.categoryAr : study.categoryEn}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {isAr ? study.concernSummaryAr : study.concernSummaryEn}
+                  </p>
+
+                  {/* Baseline -> Follow-up Measurable Change */}
+                  <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="font-mono-tabular">
+                      <span className="text-slate-500">
+                        {isAr ? "تغير المخاطر:" : "Risk Change:"}{" "}
+                      </span>
+                      <strong className="text-slate-900">
+                        {study.baselineScore} → {study.followUpScore}
+                      </strong>
+                      <span className="text-[#059669] font-semibold ms-1.5">
+                        (-{dropPct}%)
+                      </span>
+                    </div>
+                    <div className="font-mono-tabular text-[#059669] font-semibold">
+                      {isAr ? study.timeToReferralAr : study.timeToReferralEn}
+                    </div>
+                  </div>
+
+                  {/* Mini Timeline Bars */}
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    {study.timelinePoints.map((pt, i) => (
+                      <div
+                        key={i}
+                        className="bg-white border border-slate-200/80 rounded-lg py-2 px-1"
+                      >
+                        <div className="text-[10px] text-slate-500 font-mono-tabular">
+                          {pt.label}
+                        </div>
+                        <div className="text-xs font-mono-tabular font-semibold text-slate-900">
+                          {pt.score}/100
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    <span className="font-semibold text-slate-900">
+                      {isAr ? "النتيجة السريرية:" : "Measurable Outcome:"}{" "}
+                    </span>
+                    {isAr ? study.clinicalOutcomeAr : study.clinicalOutcomeEn}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-[11px] font-medium text-[#059669]">
+                    {isAr ? study.referralStatusAr : study.referralStatusEn}
+                  </span>
+                  {onLoadSimulatedCase && (
+                    <button
+                      type="button"
+                      onClick={() => onLoadSimulatedCase(study)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1B5683] text-white text-xs font-semibold hover:bg-[#154468] transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                      <span>
+                        {isAr
+                          ? "تجربة هذه الحالة"
+                          : "Preview Case in Workspace"}
+                      </span>
+                      {isAr ? (
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                      ) : (
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Patient Journey Side-by-Side Comparison Flowchart */}

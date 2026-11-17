@@ -11,17 +11,22 @@ import {
   HeartHandshake,
   Sparkles,
 } from "lucide-react";
-import { Language, RiskReport } from "../../types/clinical";
+import { ConsentMatrix, Language, RiskReport } from "../../types/clinical";
+import { AiHealthCompanion } from "../AiHealthCompanion";
 
 interface Tab2RiskReportProps {
   lang: Language;
   report: RiskReport;
-  onProceedToTriage: () => void;
+  consent: ConsentMatrix;
+  patientGoal?: string;
+  onProceedToTriage: (prefillNote?: string) => void;
 }
 
 export const Tab2RiskReport: React.FC<Tab2RiskReportProps> = ({
   lang,
   report,
+  consent,
+  patientGoal,
   onProceedToTriage,
 }) => {
   const isAr = lang === "ar";
@@ -129,7 +134,7 @@ export const Tab2RiskReport: React.FC<Tab2RiskReportProps> = ({
 
           <button
             type="button"
-            onClick={onProceedToTriage}
+            onClick={() => onProceedToTriage()}
             className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#1B5683] text-white text-xs font-semibold hover:bg-[#154468] transition-colors cursor-pointer"
           >
             <span>
@@ -199,6 +204,15 @@ export const Tab2RiskReport: React.FC<Tab2RiskReportProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AI Health Companion: Plain-Language Explainer & Follow-Up Q&A */}
+      <AiHealthCompanion
+        lang={lang}
+        report={report}
+        consent={consent}
+        patientGoal={patientGoal}
+        onProceedToReferral={(prefillNote) => onProceedToTriage(prefillNote)}
+      />
 
       {/* Explainable Risk Breakdown Cards ("Why this score was given") */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-5">
